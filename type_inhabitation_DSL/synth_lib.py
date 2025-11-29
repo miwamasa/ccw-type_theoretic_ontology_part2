@@ -2,6 +2,7 @@
 import yaml, json, heapq
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 
 @dataclass
 class Func:
@@ -34,6 +35,27 @@ class Catalog:
         for func in self.funcs:
             self.by_cod[func.cod].append(func)
             self.by_dom[func.dom].append(func)
+
+    @classmethod
+    def from_yaml(cls, yaml_path):
+        """YAMLファイルからカタログを読み込む"""
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            catalog_dict = yaml.safe_load(f)
+        return cls(catalog_dict)
+
+    @classmethod
+    def from_dsl(cls, dsl_path):
+        """DSLファイルからカタログを読み込む"""
+        try:
+            from dsl_parser import parse_dsl_file
+        except ImportError:
+            import sys
+            # dsl_parser.pyが同じディレクトリにあることを想定
+            sys.path.insert(0, str(Path(__file__).parent))
+            from dsl_parser import parse_dsl_file
+
+        catalog_dict = parse_dsl_file(dsl_path)
+        return cls(catalog_dict)
 
     def funcs_returning(self, typ):
         return list(self.by_cod.get(typ, []))
