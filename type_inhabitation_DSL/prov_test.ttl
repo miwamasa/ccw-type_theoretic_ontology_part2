@@ -1,0 +1,125 @@
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:input_ea78f61c
+  a prov:Entity ;
+  a ex:InputData ;
+  prov:value "360000.0"^^xsd:double ;
+  ex:timestamp "2025-11-29T13:56:50.538036Z" .
+
+ex:result_ea78f61c_1
+  a prov:Entity ;
+  a ex:IntermediateResult ;
+  prov:value "360000.0"^^xsd:double ;
+  ex:timestamp "2025-11-29T13:56:50.537756Z" ;
+  prov:wasGeneratedBy ex:step_ea78f61c_1 ;
+  prov:wasDerivedFrom ex:input_ea78f61c .
+
+ex:result_ea78f61c_2
+  a prov:Entity ;
+  a ex:IntermediateResult ;
+  prov:value "1028571.4285714286"^^xsd:double ;
+  ex:timestamp "2025-11-29T13:56:50.537888Z" ;
+  prov:wasGeneratedBy ex:step_ea78f61c_2 ;
+  prov:wasDerivedFrom ex:result_ea78f61c_1 .
+
+ex:result_ea78f61c_3
+  a prov:Entity ;
+  a ex:IntermediateResult ;
+  prov:value "2777142.8571428573"^^xsd:double ;
+  ex:timestamp "2025-11-29T13:56:50.537936Z" ;
+  prov:wasGeneratedBy ex:step_ea78f61c_3 ;
+  prov:wasDerivedFrom ex:result_ea78f61c_2 .
+
+ex:output_ea78f61c
+  a prov:Entity ;
+  a ex:FinalResult ;
+  prov:value "2777142.8571428573"^^xsd:double ;
+  ex:timestamp "2025-11-29T13:56:50.538058Z" ;
+  ex:execution_id "ea78f61c" ;
+  prov:wasDerivedFrom ex:result_ea78f61c_3 .
+
+ex:plan_ea78f61c
+  a prov:Entity ;
+  a prov:Plan ;
+  ex:functions "usesEnergy ∘ energyToFuelEstimate ∘ fuelToCO2" ;
+  ex:total_steps "3" .
+
+ex:goal_ea78f61c
+  a prov:Entity ;
+  a ex:SynthesisGoal ;
+  ex:goal_signature "Product->CO2" ;
+  ex:specification "Find path from source to target type" .
+
+ex:step_ea78f61c_1
+  a prov:Activity ;
+  a ex:FunctionExecution ;
+  rdfs:label "Execute usesEnergy" ;
+  prov:startedAtTime "2025-11-29T13:56:50.537756Z"^^xsd:dateTime ;
+  prov:endedAtTime "2025-11-29T13:56:50.537756Z"^^xsd:dateTime ;
+  prov:used ex:input_ea78f61c ;
+  prov:wasAssociatedWith ex:synthesis_system ;
+  prov:hadPlan ex:plan_ea78f61c ;
+  ex:function_id "usesEnergy" ;
+  ex:function_signature "Product -> Energy" ;
+  ex:implementation_kind "sparql" ;
+  ex:cost "0" ;
+  ex:confidence "1.0" ;
+  ex:param_emission_factor "2.7" ;
+  ex:param_energy_density "42000000.0" ;
+  ex:param_efficiency "0.35" .
+
+ex:step_ea78f61c_2
+  a prov:Activity ;
+  a ex:FunctionExecution ;
+  rdfs:label "Execute energyToFuelEstimate" ;
+  prov:startedAtTime "2025-11-29T13:56:50.537888Z"^^xsd:dateTime ;
+  prov:endedAtTime "2025-11-29T13:56:50.537888Z"^^xsd:dateTime ;
+  prov:used ex:result_ea78f61c_1 ;
+  prov:wasAssociatedWith ex:synthesis_system ;
+  prov:hadPlan ex:plan_ea78f61c ;
+  ex:function_id "energyToFuelEstimate" ;
+  ex:function_signature "Energy -> Fuel" ;
+  ex:implementation_kind "formula" ;
+  ex:cost "0" ;
+  ex:confidence "1.0" ;
+  ex:param_emission_factor "2.7" ;
+  ex:param_energy_density "42000000.0" ;
+  ex:param_efficiency "0.35" .
+
+ex:step_ea78f61c_3
+  a prov:Activity ;
+  a ex:FunctionExecution ;
+  rdfs:label "Execute fuelToCO2" ;
+  prov:startedAtTime "2025-11-29T13:56:50.537936Z"^^xsd:dateTime ;
+  prov:endedAtTime "2025-11-29T13:56:50.537936Z"^^xsd:dateTime ;
+  prov:used ex:result_ea78f61c_2 ;
+  prov:wasAssociatedWith ex:synthesis_system ;
+  prov:hadPlan ex:plan_ea78f61c ;
+  ex:function_id "fuelToCO2" ;
+  ex:function_signature "Fuel -> CO2" ;
+  ex:implementation_kind "formula" ;
+  ex:cost "0" ;
+  ex:confidence "1.0" ;
+  ex:param_emission_factor "2.7" ;
+  ex:param_energy_density "42000000.0" ;
+  ex:param_efficiency "0.35" .
+
+ex:synthesis_ea78f61c
+  a prov:Activity ;
+  a ex:TypeSynthesis ;
+  rdfs:label "Type Synthesis: Product->CO2" ;
+  prov:startedAtTime "2025-11-29T13:56:50.537756Z"^^xsd:dateTime ;
+  prov:endedAtTime "2025-11-29T13:56:50.537936Z"^^xsd:dateTime ;
+  prov:wasAssociatedWith ex:synthesis_system ;
+  ex:goal "Product->CO2" ;
+  ex:total_cost "0" ;
+  ex:path_length "3" .
+
+ex:synthesis_system
+  a prov:Agent ;
+  a prov:SoftwareAgent ;
+  rdfs:label "Type-Theoretic Ontology Synthesis System" ;
+  ex:version "1.0.0" .
