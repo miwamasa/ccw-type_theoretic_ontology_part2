@@ -13,6 +13,9 @@ Type-Theoretic Ontology Synthesis System
 - 🎯 **型理論的健全性**: 型導出に基づく厳密な変換合成
 - 🔄 **Span/Cospan理論**: 圏論的なオントロジーアライメント
 - 📝 **専用DSL**: 読みやすく、拡張可能な型・関数定義言語
+- ⚡ **実行レイヤー**: SPARQL/REST/Formula の実際の実行（新機能）
+- 🔧 **単位変換**: 自動的な単位変換関数の挿入（新機能）
+- 📋 **Provenance**: PROV-O形式での来歴記録（新機能）
 - ✅ **検証済み**: すべてのテストが成功
 
 ## プロジェクト構成
@@ -29,16 +32,22 @@ Type-Theoretic Ontology Synthesis System
 │   ├── catalog.yaml            # YAML形式のカタログ（互換性用）
 │   ├── dsl_parser.py           # DSLパーサー
 │   ├── synth_lib.py            # 型合成ライブラリ
+│   ├── executor.py             # 実行レイヤー（新）
+│   ├── unit_converter.py       # 単位変換システム（新）
+│   ├── provenance.py           # Provenance生成（新）
 │   ├── run_dsl.py              # DSL実行スクリプト
+│   ├── run_executable.py       # 実行可能スクリプト（新）
 │   ├── run_prototype.py        # YAML実行スクリプト
 │   ├── test_dsl.py             # DSL統合テスト
+│   ├── test_execution.py       # 実行機能テスト（新）
 │   └── test_synthesis.py       # 型合成テスト
 │
 ├── doc/                        # ドキュメント
 │   ├── implementation.md       # 実装の詳細説明
 │   ├── verification_results.md # 動作確認結果
 │   ├── cfp_solution.md         # CFP例題の解題
-│   └── dsl_guide.md            # DSLガイド
+│   ├── dsl_guide.md            # DSLガイド
+│   └── execution_guide.md      # 実行機能ガイド（新）
 │
 └── README.md                   # このファイル
 ```
@@ -52,8 +61,14 @@ Type-Theoretic Ontology Synthesis System
 
 ### インストール
 
+**基本機能（探索のみ）:**
 ```bash
 pip install pyyaml
+```
+
+**実行機能も使用する場合（オプション）:**
+```bash
+pip install pyyaml requests sparqlwrapper
 ```
 
 ### 基本的な使い方
@@ -103,7 +118,23 @@ for cost, path in results:
     print(f"Functions: {funcs}")
 ```
 
-#### 3. テストの実行
+#### 3. 実行機能の使用（新機能）
+
+**パスの実際の実行:**
+```bash
+# モック実行（外部依存なし）
+python run_executable.py catalog.dsl Product CO2 360000 --execute --mock
+
+# Provenance生成を含む完全な実行
+python run_executable.py catalog.dsl Product CO2 360000 \
+  --execute --mock \
+  --provenance --prov-output result.ttl \
+  --verbose
+```
+
+詳細は [`doc/execution_guide.md`](doc/execution_guide.md) を参照。
+
+#### 4. テストの実行
 
 ```bash
 # DSL統合テスト
@@ -111,6 +142,9 @@ python test_dsl.py
 
 # 型合成テスト
 python test_synthesis.py
+
+# 実行機能テスト（新）
+python test_execution.py
 ```
 
 ## DSL構文
@@ -244,16 +278,22 @@ Product → Energy → Fuel → CO2
 
 ### 実装・使い方
 - [`doc/dsl_guide.md`](doc/dsl_guide.md) - DSL完全ガイド（推奨）
+- [`doc/execution_guide.md`](doc/execution_guide.md) - 実行機能ガイド（新）
 - [`doc/implementation.md`](doc/implementation.md) - 実装の詳細
 - [`doc/cfp_solution.md`](doc/cfp_solution.md) - CFP例題の詳細解題
 - [`doc/verification_results.md`](doc/verification_results.md) - 動作確認結果
 
-## 今後の拡張
+## 実装済み機能と今後の拡張
 
-### 短期（実装済み基盤の拡張）
-- [ ] 実行レイヤー: SPARQL/REST/Formula の実際の実行
-- [ ] 単位変換: 自動的な単位変換関数の挿入
-- [ ] Provenance: PROV-O形式での来歴記録
+### 実装済み ✅
+- [x] **実行レイヤー**: SPARQL/REST/Formula の実際の実行
+- [x] **単位変換**: 自動的な単位変換関数の挿入
+- [x] **Provenance**: PROV-O形式での来歴記録
+- [x] **DSL**: 専用の型・関数定義言語
+- [x] **型合成**: 逆方向探索による最適パス発見
+- [x] **コスト・信頼度**: メトリクスに基づく最適化
+
+### 今後の拡張
 
 ### 中期（アルゴリズム改善）
 - [ ] A*探索: ヒューリスティクス関数の導入
