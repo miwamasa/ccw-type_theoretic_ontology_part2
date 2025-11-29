@@ -1,0 +1,43 @@
+types:
+  - name: Product
+  - name: Energy
+    unit: J
+    range: ">=0"
+  - name: Fuel
+    unit: kg
+  - name: CO2
+    unit: kg
+
+functions:
+  - id: usesEnergy
+    sig: "Product -> Energy"
+    impl:
+      kind: sparql
+      query: "SELECT ?p ?e WHERE { ?p :usesEnergy ?e }"
+    cost: 1
+    confidence: 0.9
+
+  - id: fuelToEnergy
+    sig: "Fuel -> Energy"
+    impl:
+      kind: formula
+      expr: "energy = fuel_amount * energy_density"
+    cost: 2
+    confidence: 0.95
+
+  - id: fuelToCO2
+    sig: "Fuel -> CO2"
+    impl:
+      kind: formula
+      expr: "co2 = fuel_amount * emission_factor"
+    cost: 1
+    confidence: 0.98
+
+  - id: energyToFuelEstimate
+    sig: "Energy -> Fuel"
+    impl:
+      kind: formula
+      expr: "fuel = energy / efficiency"
+    cost: 3
+    confidence: 0.8
+    inverse_of: fuelToEnergy
