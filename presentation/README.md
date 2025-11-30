@@ -4,17 +4,17 @@
 
 ## ファイル
 
-### index.html
+### slides.html
 **HTML5スライド（推奨）**
 
-reveal.jsを使用したインタラクティブなスライドです。
+reveal.jsベースのインタラクティブなスライドです。
 
 **使い方:**
 ```bash
 # ブラウザで開く
-open index.html
+open slides.html
 # または
-firefox index.html
+firefox slides.html
 ```
 
 **特徴:**
@@ -27,7 +27,6 @@ firefox index.html
 - `→` / `Space`: 次のスライド
 - `←`: 前のスライド
 - `f`: フルスクリーン
-- `s`: スピーカーノート（プレゼンターモード）
 - `o`: スライド一覧
 - `Esc`: スライド一覧を閉じる
 
@@ -52,6 +51,7 @@ open slides.pptx
 - 標準的なPPTX形式
 - 編集可能
 - 既存のプレゼンテーションワークフローに統合可能
+- Classic Blue + Teal カラーパレット
 
 ## スライドの構成
 
@@ -83,12 +83,12 @@ open slides.pptx
 
 ## スライド生成スクリプト
 
-### generate_pptx.py
+### generate_slides.py
 
 PPTXファイルを再生成する場合:
 
 ```bash
-python3 generate_pptx.py
+python3 generate_slides.py
 ```
 
 **依存関係:**
@@ -96,21 +96,30 @@ python3 generate_pptx.py
 pip install python-pptx
 ```
 
+**デザイン:**
+- カラーパレット: Classic Blue + Teal
+  - Deep Navy (#1C2833) - メインカラー
+  - Slate Gray (#2E4053) - セカンダリ
+  - Teal (#5EA8A7) - アクセント
+  - Silver (#AAB7B8) - サポート
+  - Off-white (#F4F6F6) - 背景
+- フォント: Arial（可読性重視）
+- レイアウト: クリーンで階層的、コードと図を強調
+
 ## カスタマイズ
 
 ### HTMLスライドの編集
 
-`index.html`を直接編集してください。reveal.jsのドキュメント: https://revealjs.com/
+`slides.html`を直接編集してください。reveal.jsのドキュメント: https://revealjs.com/
 
 ### PPTXスライドの編集
 
 1. PowerPointやLibreOfficeで`slides.pptx`を開いて編集
-2. または`generate_pptx.py`を編集して再生成
+2. または`generate_slides.py`を編集して再生成
 
 ## プレゼンテーションのヒント
 
 ### HTMLスライド
-- プレゼンターモード（`s`キー）を使うと、ノートとタイマーが表示されます
 - PDFにエクスポートする場合: ブラウザの印刷機能で「PDFに保存」
 
 ### PPTXスライド
@@ -120,11 +129,11 @@ pip install python-pptx
 ## トラブルシューティング
 
 ### HTMLスライドが表示されない
-- インターネット接続を確認（reveal.jsがCDNから読み込まれます）
+- インターネット接続を確認（CSSがCDNから読み込まれます）
 - ローカルサーバーで実行することを推奨:
   ```bash
   python3 -m http.server 8000
-  # ブラウザで http://localhost:8000/index.html を開く
+  # ブラウザで http://localhost:8000/slides.html を開く
   ```
 
 ### PPTXファイルが開けない
