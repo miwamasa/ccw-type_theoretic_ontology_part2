@@ -1,0 +1,28 @@
+{
+  "facility_id": "facility_001",
+  "scope_results": {
+    "Scope1Emissions": {
+      "path": [
+        "getFuelUsage",
+        "fuelToDirectEmissions",
+        "aggregateScope1"
+      ],
+      "cost": 3.0,
+      "confidence": 0.9766666666666666,
+      "value": 1000.0
+    },
+    "Scope2Emissions": {
+      "path": [
+        "getElectricityUsage",
+        "electricityToEmissions"
+      ],
+      "cost": 2.0,
+      "confidence": 0.935,
+      "value": 1500.0
+    },
+    "Scope3Emissions": null
+  },
+  "total_emissions": 2500.0,
+  "unit": "kg-CO2",
+  "note": "現在の型システムは単一入力関数のみサポートのため、各スコープを個別に計算して手動で合計"
+}
