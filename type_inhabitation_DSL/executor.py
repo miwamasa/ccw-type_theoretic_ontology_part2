@@ -85,6 +85,18 @@ class FormulaExecutor:
             'value': input_value,
         }
 
+        # Product型（タプル）の場合、各要素を変数にバインド
+        if isinstance(input_value, (tuple, list)):
+            # タプルの要素をscope1, scope2, scope3として登録
+            for i, val in enumerate(input_value):
+                variables[f'scope{i+1}'] = val
+                variables[f'x{i+1}'] = val  # x1, x2, x3としても登録
+            # 互換性のため、xにも登録（単一値として扱う場合）
+            if len(input_value) > 0:
+                variables['x'] = input_value[0]
+        else:
+            variables['x'] = input_value
+
         # コンテキストからパラメータを取得
         variables.update(context.parameters)
 
@@ -126,8 +138,14 @@ class FormulaExecutor:
             )
         except Exception as e:
             # エラーの場合、モック値を返す
+            # Product型の場合は合計値を返す
+            if isinstance(input_value, (tuple, list)):
+                mock_value = sum(input_value) if input_value else 0
+            else:
+                mock_value = input_value * 1.5 if isinstance(input_value, (int, float)) else input_value
+
             return ExecutionResult(
-                value=input_value * 1.5,  # デフォルト変換
+                value=mock_value,
                 type_name="Number",
                 confidence=0.5,
                 metadata={
@@ -264,6 +282,61 @@ class RESTExecutor:
         )
 
 
+class BuiltinExecutor:
+    """ビルトイン関数の実行エンジン"""
+
+    def execute(self, builtin_name: str, input_values: List[Any],
+                context: ExecutionContext, catalog=None) -> ExecutionResult:
+        """
+        ビルトイン関数を実行
+
+        Args:
+            builtin_name: ビルトイン関数名 ("product", "sum", etc.)
+            input_values: 入力値のリスト
+            context: 実行コンテキスト
+            catalog: カタログ（型情報取得用）
+
+        Returns:
+            実行結果
+        """
+        if builtin_name == "product":
+            # Product型の構築
+            # 入力値をタプルとして返す
+            return ExecutionResult(
+                value=tuple(input_values),
+                type_name="Product",  # 実際の型名は呼び出し側で設定
+                metadata={
+                    'builtin': 'product',
+                    'components': input_values
+                }
+            )
+
+        elif builtin_name == "sum":
+            # 合計を計算
+            total = sum(input_values)
+            return ExecutionResult(
+                value=total,
+                type_name="Number",
+                metadata={
+                    'builtin': 'sum',
+                    'operands': input_values
+                }
+            )
+
+        elif builtin_name == "identity":
+            # 恒等関数
+            if len(input_values) != 1:
+                raise ValueError(f"identity requires exactly 1 input, got {len(input_values)}")
+            return ExecutionResult(
+                value=input_values[0],
+                type_name="Any",
+                metadata={'builtin': 'identity'}
+            )
+
+        else:
+            raise ValueError(f"Unknown builtin function: {builtin_name}")
+
+
 class PathExecutor:
     """型合成パスの実行エンジン"""
 
@@ -271,6 +344,7 @@ class PathExecutor:
         self.formula_executor = FormulaExecutor()
         self.sparql_executor = SPARQLExecutor()
         self.rest_executor = RESTExecutor()
+        self.builtin_executor = BuiltinExecutor()
         self.execution_steps: List[ExecutionStep] = []
 
     def execute_path(self, path, input_value: Any,
@@ -330,6 +404,20 @@ class PathExecutor:
             method = func.impl.get('method', 'GET')
             url = func.impl.get('url', '')
             return self.rest_executor.execute(method, url, input_value, context)
+
+        elif impl_kind == 'builtin':
+            builtin_name = func.impl.get('name', '')
+            # ビルトイン関数は input_value をリストとして受け取る
+            # 単一の値の場合はリストに変換
+            if isinstance(input_value, (list, tuple)):
+                input_values = list(input_value)
+            else:
+                input_values = [input_value]
+
+            result = self.builtin_executor.execute(builtin_name, input_values, context)
+            # 型名を実際の関数の出力型に設定
+            result.type_name = func.cod
+            return result
 
         else:
             # 未知の実装タイプ: パススルー
