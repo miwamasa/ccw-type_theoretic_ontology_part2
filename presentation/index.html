@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>型理論ベース オントロジー探索・合成システム</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reset.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/white.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/plugin/highlight/monokai.css">
+    <style>
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
+        .reveal section img { border: none; box-shadow: none; }
+        .reveal pre { font-size: 0.45em; }
+        .reveal code { font-size: 0.9em; }
+        .reveal .small { font-size: 0.7em; }
+        .reveal .smaller { font-size: 0.6em; }
+        .reveal .highlight-box {
+            background: #f0f8ff;
+            border-left: 5px solid #4a90e2;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .reveal .success-box {
+            background: #e8f5e9;
+            border-left: 5px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .reveal .diagram {
+            background: white;
+            padding: 20px;
+            margin: 20px auto;
+            font-family: monospace;
+        }
+        .reveal .two-column {
+            display: flex;
+            gap: 30px;
+        }
+        .reveal .two-column > div {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- タイトルスライド -->
+            <section>
+                <h1>型理論ベース<br/>オントロジー探索・合成システム</h1>
+                <h3>Type-Theoretic Ontology Synthesis System</h3>
+                <p style="margin-top:50px;">
+                    <strong>型理論</strong>と<strong>圏論</strong>に基づく<br/>
+                    オントロジー変換の自動探索・合成
+                </p>
+            </section>
+
+            <!-- 目次 -->
+            <section>
+                <h2>目次</h2>
+                <ol style="font-size:0.9em;">
+                    <li>理論的基礎
+                        <ul>
+                            <li>Span/Cospan理論</li>
+                            <li>型理論・型充足問題</li>
+                            <li>中間型の自動発見</li>
+                        </ul>
+                    </li>
+                    <li>YAMLベースの簡単な実装</li>
+                    <li>本格的なDSL設計</li>
+                    <li>CFP計算の実例</li>
+                    <li>まとめと今後の展望</li>
+                </ol>
+            </section>
+
+            <!-- ========== セクション1: 理論部分 ========== -->
+            <section>
+                <section>
+                    <h2>1. 理論的基礎</h2>
+                    <p>型理論と圏論によるオントロジー変換の形式化</p>
+                </section>
+
+                <!-- Span/Cospan理論 -->
+                <section>
+                    <h3>1.1 Span/Cospan理論</h3>
+                    <div class="highlight-box">
+                        <p><strong>なぜオントロジーにSpanが向いているのか？</strong></p>
+                        <p>オントロジー間のアライメントは本質的に<br/>
+                        「対応表」を持つ → これが<strong>Span</strong>そのもの</p>
+                    </div>
+                    <div class="diagram">
+                        <pre>
+        A ← X → B
+
+A: オントロジーA
+B: オントロジーB
+X: 対応（マッピングテーブル）
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Spanの合成</h3>
+                    <p class="small">2つのアライメントを連鎖させる</p>
+                    <div class="diagram">
+                        <pre>
+A ← X → B     (AとBのアライメント)
+B ← Y → C     (BとCのアライメント)
+        ↓ pullback で合成
+A ← X×<sub>B</sub>Y → C  (AとCのアライメント)
+                        </pre>
+                    </div>
+                    <div class="highlight-box small">
+                        <p><strong>Pullbackの意義:</strong></p>
+                        <ul>
+                            <li>B型が一致する要素のみが自動的に接合</li>
+                            <li>互換性のないマッピングは合成されない（安全）</li>
+                            <li>意味的に正しい変換のみが生成される</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>Cospan: オントロジー統合</h3>
+                    <div class="diagram">
+                        <pre>
+A → Z ← B
+
+A: 工場のスキーマ
+B: 発電のスキーマ
+Z: 統合された環境インパクトモデル
+                        </pre>
+                    </div>
+                    <p class="small">Colimit（余極限）を取ることで、<br/>
+                    複数のオントロジーを統合</p>
+                </section>
+
+                <!-- 型理論 -->
+                <section>
+                    <h3>1.2 型理論による定式化</h3>
+                    <div class="two-column">
+                        <div>
+                            <p class="small"><strong>型 = オントロジーのクラス</strong></p>
+                            <pre><code class="language-haskell">
+type Product
+type Energy [unit=J]
+type Fuel [unit=kg]
+type CO2 [unit=kg]
+                            </code></pre>
+                        </div>
+                        <div>
+                            <p class="small"><strong>関数 = 型間の変換</strong></p>
+                            <pre><code class="language-haskell">
+usesEnergy :
+  Product → Energy
+
+fuelToCO2 :
+  Fuel → CO2
+                            </code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>型充足（Type Inhabitation）問題</h3>
+                    <div class="highlight-box">
+                        <p><strong>問題:</strong> 目的型 <code>Product → CO2</code> を満たす<br/>
+                        証明項（関数合成）は存在するか？</p>
+                    </div>
+                    <p class="small">型付けルールによる導出：</p>
+                    <pre class="smaller"><code>
+Γ ⊢ usesEnergy : Product → Energy
+Γ ⊢ energyToFuelEstimate : Energy → Fuel
+Γ ⊢ fuelToCO2 : Fuel → CO2
+───────────────────────────────────────────────────────
+Γ ⊢ (fuelToCO2 ∘ energyToFuelEstimate ∘ usesEnergy) : Product → CO2
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>1.3 中間型の自動発見</h3>
+                    <p class="small">探索の過程で「隠れたブリッジ概念」が出現</p>
+                    <div class="diagram">
+                        <pre class="small">
+初期状態: Product と CO2 の直接的な関係は不明
+
+探索プロセス:
+1. CO2 を生成する関数は？
+   → fuelToCO2 : Fuel → CO2 発見
+   → <strong>Fuel</strong> が中間型として出現
+
+2. Fuel を生成する関数は？
+   → energyToFuelEstimate : Energy → Fuel 発見
+   → <strong>Energy</strong> が中間型として出現
+
+3. Product から Energy への変換は？
+   → usesEnergy : Product → Energy 発見
+   → <strong>完全なパスが構築される</strong>
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>3つの視点の統一</h3>
+                    <table class="smaller">
+                        <tr>
+                            <th>視点</th>
+                            <th>現象の説明</th>
+                        </tr>
+                        <tr>
+                            <td><strong>圏論</strong></td>
+                            <td>Spanの合成の因子分解（factorization discovery）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>型理論</strong></td>
+                            <td>型制約の充足による中間型の自動導出</td>
+                        </tr>
+                        <tr>
+                            <td><strong>オントロジー</strong></td>
+                            <td>隠れたブリッジ概念がPullbackで顕在化</td>
+                        </tr>
+                    </table>
+                    <p class="small" style="margin-top:30px;">
+                        → 同じ現象を異なる理論で説明できる<br/>
+                        → 理論的な健全性が保証される
+                    </p>
+                </section>
+            </section>
+
+            <!-- ========== セクション2: YAML実装 ========== -->
+            <section>
+                <section>
+                    <h2>2. YAMLベースの実装</h2>
+                    <p>プロトタイプ実装による概念実証</p>
+                </section>
+
+                <section>
+                    <h3>カタログ定義（catalog.yaml）</h3>
+                    <pre class="smaller"><code class="language-yaml">
+types:
+  - name: Product
+  - name: Energy
+    unit: J
+    range: ">=0"
+  - name: Fuel
+    unit: kg
+  - name: CO2
+    unit: kg
+
+functions:
+  - id: usesEnergy
+    sig: "Product -> Energy"
+    impl:
+      kind: sparql
+      query: "SELECT ?p ?e WHERE { ?p :usesEnergy ?e }"
+    cost: 1
+    confidence: 0.9
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>データ構造</h3>
+                    <pre class="smaller"><code class="language-python">
+@dataclass
+class Func:
+    id: str           # 関数ID
+    dom: str          # Domain型
+    cod: str          # Codomain型
+    cost: float       # 実行コスト
+    conf: float       # 信頼度
+    impl: dict        # 実装情報
+    inverse_of: str|None  # 逆関数の指定
+
+class Catalog:
+    types: dict       # 型カタログ
+    funcs: list[Func] # 関数カタログ
+    by_cod: dict      # Codomain でインデックス
+    by_dom: dict      # Domain でインデックス
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>探索アルゴリズム: 逆方向探索</h3>
+                    <div class="two-column">
+                        <div>
+                            <p class="small"><strong>アルゴリズム概要:</strong></p>
+                            <ol class="smaller">
+                                <li>ゴール型からスタート</li>
+                                <li>ゴールを返す関数を探索</li>
+                                <li>各関数のdomainを新しいサブゴールに</li>
+                                <li>ソース型に到達したらパス記録</li>
+                                <li>コスト最小のパスを返す</li>
+                            </ol>
+                        </div>
+                        <div>
+                            <p class="small"><strong>特徴:</strong></p>
+                            <ul class="smaller">
+                                <li>Dijkstra的な最短経路探索</li>
+                                <li>優先度付きキュー使用</li>
+                                <li>コスト制限による枝刈り</li>
+                                <li>訪問済みノードの重複除去</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>実装（擬似コード）</h3>
+                    <pre class="smaller"><code class="language-python">
+def synthesize_backward(catalog, src_type, goal_type):
+    pq = [(0.0, goal_type, [])]  # (cost, type, path)
+    visited_best = {}
+    results = []
+
+    while pq:
+        cum_cost, cur_type, path = heappop(pq)
+
+        if cur_type == src_type:
+            results.append((cum_cost, path))
+            continue
+
+        # 枝刈り
+        if cum_cost >= visited_best.get(cur_type, inf):
+            continue
+        visited_best[cur_type] = cum_cost
+
+        # cur_typeを返す関数を探索
+        for f in catalog.funcs_returning(cur_type):
+            new_cost = cum_cost + f.cost
+            new_path = [f] + path
+            heappush(pq, (new_cost, f.dom, new_path))
+
+    return sorted(results, key=lambda x: x[0])
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>実行例</h3>
+                    <pre class="smaller"><code class="language-bash">
+$ python run_prototype.py catalog.yaml Product CO2
+                    </code></pre>
+                    <pre class="smaller"><code class="language-json">
+{
+  "goal": "Product->CO2",
+  "plans": [
+    {
+      "cost": 5.0,
+      "confidence_est": 0.7056,
+      "steps": [
+        {"id": "usesEnergy", "sig": "Product -> Energy"},
+        {"id": "energyToFuelEstimate", "sig": "Energy -> Fuel"},
+        {"id": "fuelToCO2", "sig": "Fuel -> CO2"}
+      ],
+      "proof": "usesEnergy ∘ energyToFuelEstimate ∘ fuelToCO2"
+    }
+  ]
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>検証結果</h3>
+                    <div class="success-box">
+                        <p><strong>すべてのテストが成功</strong></p>
+                        <ul class="small">
+                            <li>✅ 基本動作: Product → CO2 のパス探索成功</li>
+                            <li>✅ 包括的テスト: 6つのテストケースすべて成功</li>
+                            <li>✅ 型理論・圏論との整合性確認</li>
+                        </ul>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ========== セクション3: 本格的なDSL ========== -->
+            <section>
+                <section>
+                    <h2>3. 本格的なDSL設計</h2>
+                    <p>読みやすく拡張可能な専用言語</p>
+                </section>
+
+                <section>
+                    <h3>DSL構文</h3>
+                    <pre class="smaller"><code>
+# 型定義
+type Product
+type Energy [unit=J, range=>=0]
+type Fuel [unit=kg]
+type CO2 [unit=kg]
+
+# 関数定義
+fn usesEnergy {
+  sig: Product -> Energy
+  impl: sparql("SELECT ?p ?e WHERE { ?p :usesEnergy ?e }")
+  cost: 1
+  confidence: 0.9
+}
+
+fn fuelToCO2 {
+  sig: Fuel -> CO2
+  impl: formula("co2 = fuel_amount * emission_factor")
+  cost: 1
+  confidence: 0.98
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>実装の種類</h3>
+                    <div class="two-column">
+                        <div>
+                            <p class="small"><strong>SPARQL:</strong></p>
+                            <pre class="smaller"><code>
+impl: sparql("
+  SELECT ?p ?e
+  WHERE {
+    ?p :usesEnergy ?e
+  }")
+                            </code></pre>
+                            <p class="small"><strong>REST API:</strong></p>
+                            <pre class="smaller"><code>
+impl: rest(
+  "POST",
+  "https://.../api"
+)
+                            </code></pre>
+                        </div>
+                        <div>
+                            <p class="small"><strong>Formula:</strong></p>
+                            <pre class="smaller"><code>
+impl: formula("
+  co2 = fuel *
+    emission_factor
+")
+                            </code></pre>
+                            <p class="small"><strong>Inverse:</strong></p>
+                            <pre class="smaller"><code>
+fn energyToFuel {
+  sig: Energy -> Fuel
+  impl: formula(...)
+  inverse_of:
+    fuelToEnergy
+}
+                            </code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>DSLパーサー</h3>
+                    <p class="small">課題: SPARQL文字列内の<code>}</code>がパースを妨げる</p>
+                    <pre class="smaller"><code class="language-python">
+# ❌ 単純な正規表現では失敗
+pattern = r'fn\s+(\w+)\s*\{([^}]+)\}'  # } で終了してしまう
+
+# ✅ 解決策: 文字列リテラル検出 + 手動ブレースカウント
+in_string = False
+brace_count = 0
+for char in content:
+    if char in ('"', "'") and not escaped:
+        in_string = not in_string
+    if not in_string:
+        if char == '{': brace_count += 1
+        elif char == '}':
+            if brace_count == 0: break
+            brace_count -= 1
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>実行機能（新実装）</h3>
+                    <div class="highlight-box small">
+                        <p><strong>3つの主要機能を追加:</strong></p>
+                    </div>
+                    <ol class="small">
+                        <li><strong>実行レイヤー</strong>: SPARQL/REST/Formula の実際の実行
+                            <ul class="smaller">
+                                <li>FormulaExecutor: 数式の安全な評価</li>
+                                <li>SPARQLExecutor: SPARQLクエリ実行（モックモード対応）</li>
+                                <li>RESTExecutor: REST API呼び出し</li>
+                            </ul>
+                        </li>
+                        <li><strong>単位変換</strong>: 自動的な単位変換関数の挿入
+                            <ul class="smaller">
+                                <li>J ↔ kWh, kg ↔ g, K ↔ C ↔ F など</li>
+                                <li>UnitAwareCatalog による自動補完</li>
+                            </ul>
+                        </li>
+                        <li><strong>Provenance</strong>: PROV-O形式での来歴記録
+                            <ul class="smaller">
+                                <li>Entity/Activity/Agent モデル</li>
+                                <li>Turtle および JSON 形式で出力</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>実行例</h3>
+                    <pre class="smaller"><code class="language-bash">
+# パスの実際の実行
+$ python run_executable.py catalog.dsl Product CO2 360000 \
+  --execute --mock --provenance --verbose
+
+# 出力:
+✓ Found path with cost 5.0
+  Functions: usesEnergy -> energyToFuelEstimate -> fuelToCO2
+✓ Execution completed
+  Final result: 23.14 g CO2
+✓ Provenance saved to result.ttl
+                    </code></pre>
+                    <div class="success-box small">
+                        <p>探索だけでなく、<strong>実際の計算と記録</strong>まで自動化</p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- ========== セクション4: CFP事例 ========== -->
+            <section>
+                <section>
+                    <h2>4. CFP計算の実例</h2>
+                    <p>Carbon Footprint 計算による実証</p>
+                </section>
+
+                <section>
+                    <h3>問題設定</h3>
+                    <div class="highlight-box">
+                        <p><strong>目標:</strong> 製品（Product）のCO2排出量を計算</p>
+                        <p><strong>制約:</strong> 直接的な <code>Product → CO2</code> 関数は存在しない</p>
+                    </div>
+                    <div class="diagram small">
+                        <pre>
+利用可能な関数（断片的）:
+  - usesEnergy: Product → Energy
+  - fuelToEnergy: Fuel → Energy
+  - fuelToCO2: Fuel → CO2
+  - energyToFuelEstimate: Energy → Fuel (逆関数)
+
+これらをどう組み合わせるか？
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>探索プロセス</h3>
+                    <div class="diagram smaller">
+                        <pre>
+ステップ1: ノード = CO2, パス = []
+  → CO2 を返す関数を探す
+  → fuelToCO2 : Fuel → CO2 を発見
+  → 新しいゴール = Fuel
+
+ステップ2: ノード = Fuel, パス = [fuelToCO2]
+  → Fuel を返す関数を探す
+  → energyToFuelEstimate : Energy → Fuel を発見
+  → 新しいゴール = Energy
+
+ステップ3: ノード = Energy, パス = [energyToFuelEstimate, fuelToCO2]
+  → Energy を返す関数を探す
+  → usesEnergy : Product → Energy を発見
+  → ゴールに到達！（Product == Product）
+
+✅ 解を発見: Product → Energy → Fuel → CO2
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>発見されたパス</h3>
+                    <div class="diagram">
+                        <pre class="small">
+Product
+   |
+   | [1] usesEnergy (conf: 0.9)
+   | "KGから製品のエネルギー使用量を取得"
+   ↓
+Energy
+   |
+   | [3] energyToFuelEstimate (conf: 0.8) ⚠️ 逆算
+   | "エネルギー量から燃料使用量を推定"
+   ↓
+Fuel
+   |
+   | [1] fuelToCO2 (conf: 0.98)
+   | "燃料燃焼によるCO2排出量を計算"
+   ↓
+CO2
+                        </pre>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>メトリクス分析</h3>
+                    <div class="two-column">
+                        <div>
+                            <p class="small"><strong>コスト分析:</strong></p>
+                            <table class="smaller">
+                                <tr><th>関数</th><th>コスト</th><th>割合</th></tr>
+                                <tr><td>usesEnergy</td><td>1.0</td><td>20%</td></tr>
+                                <tr><td>energyToFuel</td><td>3.0</td><td>60%</td></tr>
+                                <tr><td>fuelToCO2</td><td>1.0</td><td>20%</td></tr>
+                                <tr><td><strong>合計</strong></td><td><strong>5.0</strong></td><td></td></tr>
+                            </table>
+                            <p class="smaller">逆算ステップが<br/>コストの60%を占める</p>
+                        </div>
+                        <div>
+                            <p class="small"><strong>信頼度分析:</strong></p>
+                            <table class="smaller">
+                                <tr><th>関数</th><th>信頼度</th></tr>
+                                <tr><td>usesEnergy</td><td>0.9</td></tr>
+                                <tr><td>energyToFuel</td><td>0.8</td></tr>
+                                <tr><td>fuelToCO2</td><td>0.98</td></tr>
+                                <tr><td><strong>合計(積)</strong></td><td><strong>0.7056</strong></td></tr>
+                            </table>
+                            <p class="smaller">70.56% の信頼度<br/>= 実用的に許容範囲</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>数値例</h3>
+                    <p class="small"><strong>入力:</strong> ノートPC（エネルギー使用量 = 360,000 J = 100 Wh）</p>
+                    <pre class="smaller"><code>
+ステップ1: usesEnergy(laptop)
+  SPARQL → energy = 360,000 J
+
+ステップ2: energyToFuelEstimate(360,000 J)
+  Assuming gasoline: energy_density = 42 MJ/kg
+  fuel = 360,000 / (42 × 10⁶) = 0.00857 kg = 8.57 g
+
+ステップ3: fuelToCO2(0.00857 kg)
+  Assuming gasoline: emission_factor = 2.7 kg-CO2/kg
+  co2 = 0.00857 × 2.7 = 0.02314 kg = 23.14 g
+                    </code></pre>
+                    <div class="success-box small">
+                        <p><strong>結果:</strong> ノートPCの製造エネルギー相当 ≈ <strong>23.14 g CO2</strong></p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>GHG Scope 1, 2, 3 シナリオ</h3>
+                    <p class="small">集約関数の影響分析</p>
+                    <div class="two-column">
+                        <div class="smaller">
+                            <p><strong>Scope定義:</strong></p>
+                            <ul>
+                                <li><strong>Scope 1:</strong> 直接排出<br/>（燃料燃焼、プロセス排出）</li>
+                                <li><strong>Scope 2:</strong> エネルギー間接排出<br/>（購入電力、購入熱）</li>
+                                <li><strong>Scope 3:</strong> その他間接排出<br/>（輸送、通勤、出張）</li>
+                            </ul>
+                        </div>
+                        <div class="smaller">
+                            <p><strong>集約関数:</strong></p>
+                            <pre><code>
+fn aggregateScope1 {
+  sig: DirectFuel ->
+       Scope1Emissions
+  impl: formula(...)
+}
+
+fn aggregateAllScopes {
+  sig: TotalGHG ->
+       TotalGHG
+  impl: formula(
+    "total = s1+s2+s3")
+}
+                            </code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>集約関数の影響</h3>
+                    <table class="smaller">
+                        <tr>
+                            <th>シナリオ</th>
+                            <th>コスト</th>
+                            <th>信頼度</th>
+                            <th>集約数</th>
+                        </tr>
+                        <tr>
+                            <td>Facility → Scope1Emissions</td>
+                            <td>3.0</td>
+                            <td>0.9310</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>Facility → Scope2Emissions</td>
+                            <td>2.0</td>
+                            <td>0.8740</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td>Organization → TotalGHG</td>
+                            <td>3.5</td>
+                            <td>0.8500</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>Facility → TotalGHG（2段階）</td>
+                            <td>3.5</td>
+                            <td>0.9310</td>
+                            <td>2</td>
+                        </tr>
+                    </table>
+                    <p class="small" style="margin-top:20px;">
+                        <strong>発見:</strong> 集約関数は通常の関数と同様に型合成に統合され、<br/>
+                        パス探索に影響を与えない（成功率100%）
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Provenance記録</h3>
+                    <pre class="smaller"><code class="language-turtle">
+@prefix prov: &lt;http://www.w3.org/ns/prov#&gt; .
+
+ex:cfp_result_123
+  a prov:Entity ;
+  prov:value "23.14"^^xsd:float ;
+  prov:wasGeneratedBy ex:cfp_computation_456 .
+
+ex:cfp_computation_456
+  a prov:Activity ;
+  prov:used ex:laptop_energy_data ;
+  prov:hadPlan ex:plan_product_to_co2 .
+
+ex:plan_product_to_co2
+  a prov:Plan ;
+  prov:value "usesEnergy ∘ energyToFuelEstimate ∘ fuelToCO2" ;
+  ex:totalCost "5.0"^^xsd:float ;
+  ex:confidence "0.7056"^^xsd:float .
+                    </code></pre>
+                    <p class="small">完全なトレーサビリティを実現</p>
+                </section>
+            </section>
+
+            <!-- ========== セクション5: まとめ ========== -->
+            <section>
+                <section>
+                    <h2>5. まとめと今後の展望</h2>
+                </section>
+
+                <section>
+                    <h3>主要な成果</h3>
+                    <div class="success-box small">
+                        <p><strong>理論と実装の統合</strong></p>
+                        <ul class="smaller">
+                            <li>✅ Span/Cospan理論の実装可能性を実証</li>
+                            <li>✅ 型充足問題としての定式化が有効</li>
+                            <li>✅ 中間型の自動発見メカニズムを確認</li>
+                        </ul>
+                    </div>
+                    <div class="success-box small">
+                        <p><strong>実用的なシステム</strong></p>
+                        <ul class="smaller">
+                            <li>✅ 自動パス探索（コスト最適化）</li>
+                            <li>✅ 専用DSL（読みやすく拡張可能）</li>
+                            <li>✅ 実行レイヤー（SPARQL/REST/Formula）</li>
+                            <li>✅ 単位変換・Provenance生成</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>実装済み機能</h3>
+                    <div class="two-column">
+                        <div class="smaller">
+                            <p><strong>コア機能:</strong></p>
+                            <ul style="font-size:0.9em;">
+                                <li>型合成エンジン</li>
+                                <li>逆方向探索アルゴリズム</li>
+                                <li>コスト・信頼度最適化</li>
+                                <li>YAML/DSLカタログ</li>
+                            </ul>
+                        </div>
+                        <div class="smaller">
+                            <p><strong>拡張機能:</strong></p>
+                            <ul style="font-size:0.9em;">
+                                <li>実行レイヤー</li>
+                                <li>単位変換システム</li>
+                                <li>Provenance生成</li>
+                                <li>モックモード（テスト用）</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="highlight-box small" style="margin-top:20px;">
+                        <p><strong>テスト結果:</strong> すべてのテストケースが成功<br/>
+                        （型合成テスト 6件 + DSLテスト 5件 + 実行テスト 5件 + GHG集約テスト 8件）</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>今後の拡張: 中期</h3>
+                    <div class="small">
+                        <p><strong>アルゴリズム改善</strong></p>
+                        <ul class="smaller">
+                            <li><strong>A*探索:</strong> ヒューリスティクス関数の導入
+                                <ul>
+                                    <li>型の構造的距離を推定</li>
+                                    <li>探索効率の大幅な向上</li>
+                                </ul>
+                            </li>
+                            <li><strong>双方向探索:</strong> 起点と終点からの同時探索
+                                <ul>
+                                    <li>探索空間の削減</li>
+                                    <li>より複雑なパスの発見</li>
+                                </ul>
+                            </li>
+                            <li><strong>キャッシング:</strong> 型到達可能性のキャッシュ
+                                <ul>
+                                    <li>繰り返しクエリの高速化</li>
+                                    <li>Redis等による分散キャッシュ</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>今後の拡張: 長期</h3>
+                    <div class="small">
+                        <p><strong>理論的拡張</strong></p>
+                        <ul class="smaller">
+                            <li><strong>依存型（Dependent Types）:</strong> 値に依存する型
+                                <ul>
+                                    <li>エネルギー保存則などの物理法則を型で表現</li>
+                                    <li>Lean4/Agdaによる証明</li>
+                                </ul>
+                            </li>
+                            <li><strong>多引数関数:</strong> カリー化を超えた表現力
+                                <ul>
+                                    <li>集約関数の正確なモデル化</li>
+                                    <li><code>(A, B) → C</code> の直接サポート</li>
+                                </ul>
+                            </li>
+                            <li><strong>Cospan/Colimit:</strong> オントロジー統合
+                                <ul>
+                                    <li>複数オントロジーのマージ</li>
+                                    <li>矛盾解決機構</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>応用分野</h3>
+                    <div class="two-column">
+                        <div class="smaller">
+                            <p><strong>環境・サステナビリティ:</strong></p>
+                            <ul>
+                                <li>CFP（Carbon Footprint）計算</li>
+                                <li>LCA（Life Cycle Assessment）</li>
+                                <li>GHG Scope 1/2/3 レポート</li>
+                                <li>ESGデータ統合</li>
+                            </ul>
+                        </div>
+                        <div class="smaller">
+                            <p><strong>スマートシティ・IoT:</strong></p>
+                            <ul>
+                                <li>NGSI-LD コンテキスト統合</li>
+                                <li>センサーデータ変換</li>
+                                <li>エネルギー管理システム</li>
+                                <li>Federated Query</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="smaller" style="margin-top:20px;">
+                        <p><strong>その他:</strong></p>
+                        <ul>
+                            <li>知識グラフ統合（複数のオントロジーを自動マッピング）</li>
+                            <li>データパイプライン自動生成（ETL処理の最適化）</li>
+                            <li>API合成（複数のAPIを組み合わせた新しいエンドポイント生成）</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section>
+                    <h3>理論的意義</h3>
+                    <div class="highlight-box small">
+                        <p><strong>3つの理論的貢献</strong></p>
+                    </div>
+                    <ol class="small">
+                        <li><strong>圏論の実用化</strong>
+                            <ul class="smaller">
+                                <li>Span/Cospanが実装可能であることを実証</li>
+                                <li>Pullbackによる安全な合成を実現</li>
+                            </ul>
+                        </li>
+                        <li><strong>型理論の応用</strong>
+                            <ul class="smaller">
+                                <li>Type Inhabitationがオントロジー変換に適用可能</li>
+                                <li>型制約による自動推論の有効性を確認</li>
+                            </ul>
+                        </li>
+                        <li><strong>中間概念の発見</strong>
+                            <ul class="smaller">
+                                <li>隠れたブリッジ概念が自動的に出現</li>
+                                <li>探索による知識発見のメカニズムを解明</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>プロジェクト構成</h3>
+                    <pre class="smaller"><code>
+.
+├── theory/                # 理論的基礎
+│   ├── span_cospan.md    # Span/Cospan理論
+│   ├── dsl_design.md     # DSL設計書
+│   └── cfp_example.md    # CFP例題の解説
+├── type_inhabitation_DSL/ # 実装
+│   ├── synth_lib.py      # 型合成ライブラリ
+│   ├── dsl_parser.py     # DSLパーサー
+│   ├── executor.py       # 実行レイヤー
+│   ├── unit_converter.py # 単位変換
+│   ├── provenance.py     # Provenance生成
+│   └── *.dsl, *.yaml     # カタログ
+├── doc/                   # ドキュメント
+│   ├── dsl_guide.md
+│   ├── execution_guide.md
+│   └── ghg_aggregate_analysis.md
+└── presentation/          # このスライド
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h2>まとめ</h2>
+                    <div class="highlight-box">
+                        <p><strong>型理論と圏論を実装レベルで統合</strong></p>
+                        <p class="small">抽象的な理論を具体的な問題解決に応用</p>
+                    </div>
+                    <ul class="small">
+                        <li>✅ 理論的健全性と実用性を両立</li>
+                        <li>✅ 自動探索による生産性向上</li>
+                        <li>✅ 完全なトレーサビリティ</li>
+                        <li>✅ 拡張可能なアーキテクチャ</li>
+                    </ul>
+                    <p style="margin-top:40px; font-size:0.8em;">
+                        <strong>GitHub:</strong> github.com/miwamasa/ccw-type_theoretic_ontology_part2
+                    </p>
+                </section>
+
+                <section>
+                    <h2>ありがとうございました</h2>
+                    <p style="margin-top:50px;">
+                        <strong>Type-Theoretic Ontology Synthesis System</strong><br/>
+                        型理論ベース オントロジー探索・合成システム
+                    </p>
+                    <p style="margin-top:50px; font-size:0.8em;">
+                        質問・フィードバックをお待ちしています
+                    </p>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/plugin/markdown/markdown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/plugin/highlight/highlight.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide',
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            width: 1280,
+            height: 720,
+            margin: 0.04
+        });
+    </script>
+</body>
+</html>
