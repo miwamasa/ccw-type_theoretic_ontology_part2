@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product型デモ - 型合成ビジュアライザー</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .demo-button {
+            padding: 15px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .demo-button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);
+            color: white;
+        }
+
+        .info-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .info-panel h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .canvas-area {
+            background: #fafbfc;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Scratchスタイルのブロック */
+        .type-block {
+            position: absolute;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: white;
+            min-width: 120px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .type-block:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .type-block.highlight {
+            animation: pulse 1s infinite;
+            z-index: 100;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .type-input {
+            background: #4CAF50;
+        }
+
+        .type-scope {
+            background: #2196F3;
+        }
+
+        .type-product {
+            background: #FF9800;
+        }
+
+        .type-output {
+            background: #9C27B0;
+        }
+
+        .function-block {
+            position: absolute;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            padding: 10px 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            font-size: 0.85em;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        .function-block.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .function-block.active {
+            border-color: #f39c12;
+            background: #fff9e6;
+            animation: glow 1s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+            50% { box-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
+        }
+
+        .arrow {
+            position: absolute;
+            stroke: #667eea;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .arrow.show {
+            opacity: 1;
+        }
+
+        .arrow.active {
+            stroke: #f39c12;
+            stroke-width: 4;
+            animation: flow 1.5s infinite;
+        }
+
+        @keyframes flow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; }
+        }
+
+        .log-panel {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #3498db;
+            padding-left: 10px;
+        }
+
+        .log-entry.success {
+            border-color: #2ecc71;
+            color: #2ecc71;
+        }
+
+        .log-entry.info {
+            border-color: #3498db;
+        }
+
+        .log-entry.warning {
+            border-color: #f39c12;
+            color: #f39c12;
+        }
+
+        .value-display {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-weight: bold;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .value-display.show {
+            opacity: 1;
+        }
+
+        .product-visualization {
+            position: absolute;
+            background: rgba(255, 152, 0, 0.1);
+            border: 3px dashed #FF9800;
+            border-radius: 12px;
+            padding: 15px;
+            opacity: 0;
+            transition: all 0.5s;
+        }
+
+        .product-visualization.show {
+            opacity: 1;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .stats-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧩 Product型デモ</h1>
+            <p class="subtitle">型合成ビジュアライザー - GHG Scope 1, 2, 3 統合</p>
+        </header>
+
+        <div class="main-content">
+            <!-- コントロールパネル -->
+            <div class="controls">
+                <button class="demo-button btn-primary" onclick="demo.runDemo1()">
+                    📊 デモ1: 単一Scopeアプローチ
+                </button>
+                <button class="demo-button btn-success" onclick="demo.runDemo2()">
+                    🎯 デモ2: Product型アプローチ
+                </button>
+                <button class="demo-button btn-info" onclick="demo.runDemo3()">
+                    ⚡ デモ3: 実行と集約
+                </button>
+                <button class="demo-button btn-warning" onclick="demo.reset()">
+                    🔄 リセット
+                </button>
+
+                <div class="info-panel">
+                    <h3>現在の状態</h3>
+                    <p id="status-text">デモを選択してください</p>
+                </div>
+
+                <div class="stats-panel">
+                    <h3>統計情報</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div>パス長</div>
+                            <div class="stat-value" id="stat-path-length">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>総コスト</div>
+                            <div class="stat-value" id="stat-cost">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>信頼度</div>
+                            <div class="stat-value" id="stat-confidence">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>結果</div>
+                            <div class="stat-value" id="stat-result">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color type-input"></div>
+                        <span>入力型</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color type-scope"></div>
+                        <span>Scope型</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color type-product"></div>
+                        <span>Product型</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color type-output"></div>
+                        <span>出力型</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- キャンバスエリア -->
+            <div class="canvas-area" id="canvas">
+                <svg id="svg-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
+            </div>
+        </div>
+
+        <div class="log-panel" id="log">
+            <div class="log-entry">システム準備完了。デモを選択してください。</div>
+        </div>
+    </div>
+
+    <script>
+        const demo = {
+            canvas: null,
+            svg: null,
+            log: null,
+            currentAnimation: null,
+
+            init() {
+                this.canvas = document.getElementById('canvas');
+                this.svg = document.getElementById('svg-layer');
+                this.log = document.getElementById('log');
+                this.reset();
+            },
+
+            reset() {
+                // すべてのブロックと矢印をクリア
+                const blocks = this.canvas.querySelectorAll('.type-block, .function-block, .value-display, .product-visualization');
+                blocks.forEach(block => block.remove());
+                this.svg.innerHTML = '';
+
+                this.updateStatus('リセット完了。デモを選択してください。');
+                this.updateStats('-', '-', '-', '-');
+                if (this.currentAnimation) {
+                    clearTimeout(this.currentAnimation);
+                }
+            },
+
+            addLog(message, type = 'info') {
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                this.log.appendChild(entry);
+                this.log.scrollTop = this.log.scrollHeight;
+            },
+
+            updateStatus(text) {
+                document.getElementById('status-text').textContent = text;
+            },
+
+            updateStats(pathLength, cost, confidence, result) {
+                document.getElementById('stat-path-length').textContent = pathLength;
+                document.getElementById('stat-cost').textContent = cost;
+                document.getElementById('stat-confidence').textContent = confidence;
+                document.getElementById('stat-result').textContent = result;
+            },
+
+            createTypeBlock(label, x, y, className) {
+                const block = document.createElement('div');
+                block.className = `type-block ${className}`;
+                block.textContent = label;
+                block.style.left = x + 'px';
+                block.style.top = y + 'px';
+                this.canvas.appendChild(block);
+                return block;
+            },
+
+            createFunctionBlock(label, x, y) {
+                const block = document.createElement('div');
+                block.className = 'function-block';
+                block.textContent = label;
+                block.style.left = x + 'px';
+                block.style.top = y + 'px';
+                this.canvas.appendChild(block);
+                setTimeout(() => block.classList.add('show'), 50);
+                return block;
+            },
+
+            createArrow(x1, y1, x2, y2) {
+                const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const d = `M ${x1} ${y1} L ${x2} ${y2}`;
+                arrow.setAttribute('d', d);
+                arrow.setAttribute('class', 'arrow');
+                arrow.setAttribute('stroke-dasharray', '5,5');
+                arrow.setAttribute('marker-end', 'url(#arrowhead)');
+                this.svg.appendChild(arrow);
+                setTimeout(() => arrow.classList.add('show'), 50);
+                return arrow;
+            },
+
+            createValueDisplay(value, x, y) {
+                const display = document.createElement('div');
+                display.className = 'value-display';
+                display.textContent = value;
+                display.style.left = x + 'px';
+                display.style.top = y + 'px';
+                this.canvas.appendChild(display);
+                setTimeout(() => display.classList.add('show'), 50);
+                return display;
+            },
+
+            async runDemo1() {
+                this.reset();
+                this.addLog('デモ1開始: 単一Scopeアプローチ（従来の問題）', 'info');
+                this.updateStatus('単一Scopeアプローチを実行中...');
+
+                // 矢印のマーカーを定義
+                this.svg.innerHTML = `
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
+                        </marker>
+                    </defs>
+                `;
+
+                // ブロックを配置
+                const facility = this.createTypeBlock('Facility', 50, 50, 'type-input');
+                await this.sleep(300);
+
+                const scope2 = this.createTypeBlock('Scope2\nEmissions', 300, 50, 'type-scope');
+                await this.sleep(300);
+
+                const total = this.createTypeBlock('Total\nGHG', 550, 50, 'type-output');
+                await this.sleep(300);
+
+                // パスを表示
+                this.addLog('パス探索: Facility → TotalGHGEmissions', 'info');
+
+                const func1 = this.createFunctionBlock('getElectricity\nUsage', 150, 45);
+                await this.sleep(500);
+
+                const arrow1 = this.createArrow(170, 65, 290, 65);
+                await this.sleep(500);
+
+                const func2 = this.createFunctionBlock('electricity\nToEmissions', 400, 45);
+                await this.sleep(500);
+
+                const arrow2 = this.createArrow(420, 65, 540, 65);
+                await this.sleep(500);
+
+                this.addLog('⚠ 問題発見: Scope2だけが選ばれる！', 'warning');
+                this.addLog('Scope1とScope3が無視されています', 'warning');
+
+                scope2.classList.add('highlight');
+                arrow1.classList.add('active');
+                arrow2.classList.add('active');
+
+                // 値を表示
+                await this.sleep(800);
+                this.createValueDisplay('入力: 1000.0', 50, 120);
+                await this.sleep(300);
+                this.createValueDisplay('1500.0 kg-CO2', 300, 120);
+                await this.sleep(300);
+                this.createValueDisplay('❌ 1500.0 kg-CO2\n(不正確！)', 550, 120);
+
+                this.updateStats('2', '2.0', '0.935', '1500.0 kg-CO2');
+                this.updateStatus('単一Scopeアプローチ: Scope2のみで不正確');
+                this.addLog('結果: 1500.0 kg-CO2 (Scope1とScope3が欠落)', 'warning');
+            },
+
+            async runDemo2() {
+                this.reset();
+                this.addLog('デモ2開始: Product型アプローチ', 'success');
+                this.updateStatus('Product型アプローチを実行中...');
+
+                this.svg.innerHTML = `
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
+                        </marker>
+                    </defs>
+                `;
+
+                // 3つのScopeを並べる
+                const scope1 = this.createTypeBlock('Scope1\nEmissions', 50, 50, 'type-scope');
+                await this.sleep(300);
+                const scope2 = this.createTypeBlock('Scope2\nEmissions', 50, 150, 'type-scope');
+                await this.sleep(300);
+                const scope3 = this.createTypeBlock('Scope3\nEmissions', 50, 250, 'type-scope');
+                await this.sleep(500);
+
+                this.addLog('3つのScopeを個別に計算', 'info');
+
+                // 値を表示
+                this.createValueDisplay('1000.0 kg-CO2', 190, 60);
+                await this.sleep(200);
+                this.createValueDisplay('1500.0 kg-CO2', 190, 160);
+                await this.sleep(200);
+                this.createValueDisplay('800.0 kg-CO2', 190, 260);
+                await this.sleep(500);
+
+                this.addLog('Product型を構築中...', 'info');
+
+                // Product型ブロック
+                const productViz = document.createElement('div');
+                productViz.className = 'product-visualization';
+                productViz.style.left = '350px';
+                productViz.style.top = '100px';
+                productViz.style.width = '200px';
+                productViz.style.height = '200px';
+                this.canvas.appendChild(productViz);
+
+                const productBlock = this.createTypeBlock('AllScopes\nEmissions\n(Product型)', 360, 140, 'type-product');
+
+                // 矢印でProduct型へ
+                this.createArrow(170, 70, 350, 140);
+                await this.sleep(200);
+                this.createArrow(170, 170, 350, 160);
+                await this.sleep(200);
+                this.createArrow(170, 270, 350, 180);
+                await this.sleep(500);
+
+                productViz.classList.add('show');
+                this.createValueDisplay('(1000.0,\n 1500.0,\n 800.0)', 480, 150);
+                await this.sleep(500);
+
+                this.addLog('Product型構築完了: (Scope1, Scope2, Scope3)', 'success');
+
+                // Total へ
+                const total = this.createTypeBlock('Total\nGHG', 650, 140, 'type-output');
+                await this.sleep(300);
+
+                const funcAgg = this.createFunctionBlock('aggregate\nAllScopes', 550, 135);
+                await this.sleep(300);
+
+                const arrowFinal = this.createArrow(480, 160, 640, 160);
+                arrowFinal.classList.add('active');
+                await this.sleep(500);
+
+                this.createValueDisplay('✅ 3300.0 kg-CO2\n(正確！)', 650, 210);
+
+                this.updateStats('1', '1.0', '1.0', '3300.0 kg-CO2');
+                this.updateStatus('Product型アプローチ: 全Scopeを正確に集約');
+                this.addLog('結果: 3300.0 kg-CO2 (全Scopeの合計)', 'success');
+                this.addLog('✅ すべてのScopeが正しく統合されました！', 'success');
+            },
+
+            async runDemo3() {
+                this.reset();
+                this.addLog('デモ3開始: 実行と集約のアニメーション', 'info');
+                this.updateStatus('実行プロセスを可視化中...');
+
+                this.svg.innerHTML = `
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
+                        </marker>
+                    </defs>
+                `;
+
+                // ステップ1: 入力
+                const facility = this.createTypeBlock('Facility\n(施設データ)', 50, 100, 'type-input');
+                this.createValueDisplay('facility_id:\n"F001"', 50, 170);
+                await this.sleep(800);
+
+                this.addLog('ステップ1: 各Scopeへのパス探索', 'info');
+
+                // 3つのパスを同時に表示
+                const paths = [
+                    { y: 50, label: 'Scope1', value: '1000.0', color: 'type-scope' },
+                    { y: 150, label: 'Scope2', value: '1500.0', color: 'type-scope' },
+                    { y: 250, label: 'Scope3', value: '800.0', color: 'type-scope' }
+                ];
+
+                for (let i = 0; i < paths.length; i++) {
+                    const path = paths[i];
+                    const scope = this.createTypeBlock(`${path.label}\nEmissions`, 350, path.y, path.color);
+                    const arrow = this.createArrow(170, 120, 340, path.y + 20);
+                    arrow.classList.add('active');
+                    this.createValueDisplay(`${path.value}\nkg-CO2`, 480, path.y + 10);
+                    await this.sleep(400);
+                    this.addLog(`  ${path.label}: ${path.value} kg-CO2を計算`, 'info');
+                }
+
+                await this.sleep(800);
+                this.addLog('ステップ2: Product型を構築', 'success');
+
+                // Product型の構築
+                const productViz = document.createElement('div');
+                productViz.className = 'product-visualization';
+                productViz.style.left = '600px';
+                productViz.style.top = '80px';
+                productViz.style.width = '180px';
+                productViz.style.height = '180px';
+                this.canvas.appendChild(productViz);
+
+                for (let i = 0; i < 3; i++) {
+                    this.createArrow(480, paths[i].y + 20, 600, 150);
+                    await this.sleep(300);
+                }
+
+                const product = this.createTypeBlock('AllScopes\nEmissions', 610, 130, 'type-product');
+                productViz.classList.add('show');
+                await this.sleep(500);
+
+                this.createValueDisplay('tuple:\n(1000.0,\n 1500.0,\n 800.0)', 700, 160);
+                this.addLog('Product型構築: (1000.0, 1500.0, 800.0)', 'success');
+
+                await this.sleep(800);
+                this.addLog('ステップ3: Formula実行', 'info');
+                this.addLog('  formula: "total = scope1 + scope2 + scope3"', 'info');
+
+                // 変数バインディングを表示
+                const bindings = document.createElement('div');
+                bindings.style.position = 'absolute';
+                bindings.style.left = '650px';
+                bindings.style.top = '280px';
+                bindings.style.background = 'rgba(255, 255, 255, 0.95)';
+                bindings.style.padding = '15px';
+                bindings.style.borderRadius = '8px';
+                bindings.style.border = '2px solid #667eea';
+                bindings.style.fontSize = '0.85em';
+                bindings.innerHTML = `
+                    <strong>変数バインディング:</strong><br>
+                    scope1 = 1000.0<br>
+                    scope2 = 1500.0<br>
+                    scope3 = 800.0
+                `;
+                this.canvas.appendChild(bindings);
+                bindings.style.opacity = '0';
+                setTimeout(() => bindings.style.opacity = '1', 50);
+                await this.sleep(1000);
+
+                this.addLog('  計算: 1000.0 + 1500.0 + 800.0', 'info');
+                await this.sleep(800);
+
+                // 最終結果
+                const total = this.createTypeBlock('Total\nGHG', 650, 420, 'type-output');
+                this.createArrow(700, 280, 700, 410);
+                await this.sleep(500);
+
+                const result = this.createValueDisplay('✅ 3300.0\nkg-CO2', 650, 490);
+                result.style.fontSize = '1.2em';
+                result.style.background = 'rgba(76, 175, 80, 0.95)';
+                result.style.color = 'white';
+                result.style.borderColor = '#4CAF50';
+
+                this.updateStats('6', '5.0', '0.95', '3300.0 kg-CO2');
+                this.updateStatus('実行完了: 正確な総排出量を計算');
+                this.addLog('✅ 実行完了: 3300.0 kg-CO2', 'success');
+                this.addLog('🎉 すべてのScopeが正しく集約されました！', 'success');
+            },
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        };
+
+        // 初期化
+        window.addEventListener('DOMContentLoaded', () => {
+            demo.init();
+        });
+    </script>
+</body>
+</html>
