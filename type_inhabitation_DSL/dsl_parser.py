@@ -75,14 +75,24 @@ class DSLParser:
         content = '\n'.join(lines)
 
         # 型宣言のパース
-        type_pattern = r'type\s+(\w+)(?:\s*\[([^\]]+)\])?'
+        # 通常の型: type Name [unit=kg]
+        # Product型: type Name = A × B × C
+        type_pattern = r'type\s+(\w+)(?:\s*=\s*([^{\n]+)|(?:\s*\[([^\]]+)\]))?'
         for match in re.finditer(type_pattern, content):
             name = match.group(1)
-            attrs_str = match.group(2)
+            product_def = match.group(2)  # Product型の定義
+            attrs_str = match.group(3)    # 通常の型の属性
             attrs = {}
 
-            if attrs_str:
-                # 属性をパース
+            if product_def:
+                # Product型の定義
+                # "A × B × C" または "A x B x C" の形式
+                product_def = product_def.strip()
+                # × または x で分割
+                components = [c.strip() for c in re.split(r'[×x]', product_def)]
+                attrs['product_of'] = components
+            elif attrs_str:
+                # 通常の型の属性をパース
                 for attr in attrs_str.split(','):
                     attr = attr.strip()
                     if '=' in attr:
@@ -165,6 +175,9 @@ class DSLParser:
                     impl = {'kind': 'rest', 'url': impl_value}
             elif impl_kind == 'formula':
                 impl = {'kind': 'formula', 'expr': impl_value}
+            elif impl_kind == 'builtin':
+                # ビルトイン関数
+                impl = {'kind': 'builtin', 'name': impl_value}
             else:
                 impl = {'kind': impl_kind, 'value': impl_value}
 

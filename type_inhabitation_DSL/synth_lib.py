@@ -3,6 +3,7 @@ import yaml, json, heapq
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Union, List
 
 @dataclass
 class Func:
@@ -14,9 +15,34 @@ class Func:
     impl: dict
     inverse_of: str|None = None
 
+class ProductType:
+    """Product型を表現するクラス"""
+    def __init__(self, name: str, components: List[str]):
+        self.name = name
+        self.components = components  # ["Type1", "Type2", "Type3"]
+
+    def __repr__(self):
+        return f"ProductType({self.name} = {' × '.join(self.components)})"
+
+    def __str__(self):
+        return self.name
+
 class Catalog:
     def __init__(self, catalog_dict):
-        self.types = {t['name']: t for t in catalog_dict.get('types', [])}
+        self.types = {}
+        self.product_types = {}  # Product型の定義を保持
+
+        # 型定義を処理
+        for t in catalog_dict.get('types', []):
+            type_name = t['name']
+            self.types[type_name] = t
+
+            # Product型かどうかをチェック
+            if 'product_of' in t:
+                # Product型の定義
+                components = t['product_of']
+                self.product_types[type_name] = ProductType(type_name, components)
+                self.types[type_name]['is_product'] = True
         self.funcs = []
         for f in catalog_dict.get('functions', []):
             sig = f['sig'].strip()
@@ -62,6 +88,16 @@ class Catalog:
 
     def funcs_from(self, typ):
         return list(self.by_dom.get(typ, []))
+
+    def is_product_type(self, type_name: str) -> bool:
+        """指定された型がProduct型かどうかを判定"""
+        return type_name in self.product_types
+
+    def get_product_components(self, type_name: str) -> List[str]:
+        """Product型のコンポーネント型のリストを取得"""
+        if type_name in self.product_types:
+            return self.product_types[type_name].components
+        return []
 
 # backward A* (here implemented as Dijkstra-like with zero heuristic)
 def synthesize_backward(catalog: Catalog, src_type: str, goal_type: str, max_cost=100, max_steps=10000):
