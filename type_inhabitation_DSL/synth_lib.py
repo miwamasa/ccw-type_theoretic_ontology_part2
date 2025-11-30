@@ -65,15 +65,18 @@ class Catalog:
 
 # backward A* (here implemented as Dijkstra-like with zero heuristic)
 def synthesize_backward(catalog: Catalog, src_type: str, goal_type: str, max_cost=100, max_steps=10000):
-    # PQ entries: (est_total_cost, cum_cost, node_type, path_functions_list)
+    # PQ entries: (est_total_cost, cum_cost, counter, node_type, path_functions_list)
     # path_functions_list is list of Func objects in forward order (from src to goal)
+    # counter is used as a tiebreaker to avoid comparing path lists
     pq = []
-    heapq.heappush(pq, (0.0, 0.0, goal_type, []))
+    counter = 0
+    heapq.heappush(pq, (0.0, 0.0, counter, goal_type, []))
+    counter += 1
     visited_best = {}  # type -> best_cost_seen
     results = []
     steps = 0
     while pq and steps < max_steps:
-        est_total, cum_cost, cur_type, path = heapq.heappop(pq)
+        est_total, cum_cost, _, cur_type, path = heapq.heappop(pq)
         steps += 1
         if cur_type == src_type:
             results.append((cum_cost, list(path)))
@@ -91,7 +94,8 @@ def synthesize_backward(catalog: Catalog, src_type: str, goal_type: str, max_cos
                 continue
             new_path = [f] + path  # prepend (because backward)
             next_type = f.dom
-            heapq.heappush(pq, (new_cum, new_cum, next_type, new_path))
+            heapq.heappush(pq, (new_cum, new_cum, counter, next_type, new_path))
+            counter += 1
     results.sort(key=lambda x: x[0])
     return results
 
